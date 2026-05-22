@@ -237,35 +237,32 @@ function parseEmails(value) {
 async function inviteMember({ email, emails, channelName }) {
   const cleanEmails = parseEmails(emails || email);
   const cleanChannelInput = normalizeChannelInput(channelName);
-  const cleanChannelName = normalizeChannelName(channelName);
 
   if (!cleanEmails.length || cleanEmails.some((item) => !item.includes("@"))) {
-    const error = new Error("Informe um ou mais e-mails validos.");
+    const error = new Error("Enter one or more valid emails.");
     error.code = "invalid_email";
     throw error;
   }
 
   if (cleanEmails.length > 100) {
-    const error = new Error("Informe no maximo 100 e-mails por envio.");
+    const error = new Error("Enter up to 100 emails per request.");
     error.code = "too_many_users";
     throw error;
   }
 
   if (!cleanChannelInput) {
-    const error = new Error("Informe o nome ou ID do canal.");
+    const error = new Error("Enter the channel ID.");
     error.code = "invalid_channel";
     throw error;
   }
 
-  const channel = looksLikeChannelId(cleanChannelInput)
-    ? { id: cleanChannelInput, name: cleanChannelInput }
-    : await findChannelByName(cleanChannelName);
-
-  if (!channel) {
-    const error = new Error(`Canal #${cleanChannelName} nao encontrado ou sem acesso pelo token.`);
-    error.code = "channel_not_found";
+  if (!looksLikeChannelId(cleanChannelInput)) {
+    const error = new Error("Enter a valid Slack channel ID, such as C012ABCDEF3.");
+    error.code = "invalid_channel_id";
     throw error;
   }
+
+  const channel = { id: cleanChannelInput, name: cleanChannelInput };
 
   const users = [];
   for (const cleanEmail of cleanEmails) {

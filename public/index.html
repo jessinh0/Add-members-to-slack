@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Adicionar membro ao Slack</title>
+    <title>Add Slack member</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
@@ -11,21 +11,21 @@
       <section class="panel" aria-labelledby="title">
         <div class="heading">
           <p class="eyebrow">Slack</p>
-          <h1 id="title">Adicionar membro a um canal</h1>
+          <h1 id="title">Add members to a Slack channel</h1>
         </div>
 
         <form id="invite-form" class="form">
           <label>
-            E-mails dos membros
+            Member emails
             <textarea id="emails" name="emails" rows="5" placeholder="pessoa@empresa.com&#10;outra@empresa.com" required></textarea>
           </label>
 
           <label>
-            Nome ou ID do canal
-            <input id="channelName" name="channelName" type="text" placeholder="ex: test-app ou C012ABCDEF3" required />
+            Channel ID
+            <input id="channelName" name="channelName" type="text" placeholder="Example: C012ABCDEF3" required />
           </label>
 
-          <button type="submit" id="submit-button">Adicionar ao canal</button>
+          <button type="submit" id="submit-button">Add to channel</button>
         </form>
 
         <div id="status" class="status" role="status" aria-live="polite"></div>

@@ -8,7 +8,7 @@ function wait(seconds) {
 
 async function waitWithCountdown(seconds) {
   for (let remaining = seconds; remaining > 0; remaining -= 1) {
-    showStatus(`Limite do Slack atingido. Nova tentativa em ${remaining} segundos...`);
+    showStatus(`Slack rate limit reached. Retrying in ${remaining} seconds...`);
     await wait(1);
   }
 }
@@ -34,8 +34,8 @@ async function sendInvite(payload) {
     const suffix = data.code ? ` (${data.code})` : "";
     const method = data.method ? ` Metodo: ${data.method}.` : "";
     const message = data.code === "not_json_response"
-      ? "A API /api/invite nao foi encontrada. Confirme que o app foi hospedado como Web Service Node, nao como site estatico."
-      : data.error || "Nao foi possivel adicionar o membro.";
+      ? "The /api/invite API was not found. Confirm the app is deployed as a Node Web Service, not a static site."
+      : data.error || "Could not add the member.";
     const error = new Error(`${message}${method}${suffix}`);
     error.code = data.code;
     error.retryAfter = Number(data.retryAfter || 0);
@@ -58,7 +58,7 @@ async function sendInviteWithRetry(payload) {
 
       const retryAfter = Math.max(error.retryAfter || 60, 10);
       await waitWithCountdown(retryAfter);
-      showStatus(`Tentando novamente (${attempt + 1}/${maxAttempts})...`);
+      showStatus(`Retrying (${attempt + 1}/${maxAttempts})...`);
     }
   }
 }
@@ -73,20 +73,20 @@ form.addEventListener("submit", async (event) => {
   };
 
   submitButton.disabled = true;
-  showStatus("Enviando convite...");
+  showStatus("Sending invite...");
 
   try {
     const result = await sendInviteWithRetry(payload);
     const count = result.users.length;
-    const noun = count === 1 ? "membro foi adicionado" : "membros foram adicionados";
+    const noun = count === 1 ? "member was added" : "members were added";
     const warning = result.warning
-      ? " O convite funcionou, mas o bot nao conseguiu sair do canal automaticamente."
+      ? " The invite worked, but the bot could not leave the channel automatically."
       : "";
-    showStatus(`${count} ${noun} ao canal #${result.channelName}.${warning}`, "success");
+    showStatus(`${count} ${noun} to channel ${result.channelName}.${warning}`, "success");
     form.reset();
   } catch (error) {
     const message = error.message === "Failed to fetch"
-      ? "Nao consegui conectar ao servidor local. Recarregue a pagina ou reinicie o app com .\\run-server.ps1."
+      ? "Could not connect to the local server. Reload the page or restart the app with .\\run-server.ps1."
       : error.message;
     showStatus(message, "error");
   } finally {
