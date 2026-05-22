@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Adicionar membro ao Slack</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="panel" aria-labelledby="title">
+        <div class="heading">
+          <p class="eyebrow">Slack</p>
+          <h1 id="title">Adicionar membro a um canal</h1>
+        </div>
+
+        <form id="invite-form" class="form">
+          <label>
+            E-mails dos membros
+            <textarea id="emails" name="emails" rows="5" placeholder="pessoa@empresa.com&#10;outra@empresa.com" required></textarea>
+          </label>
+
+          <label>
+            Nome do canal
+            <input id="channelName" name="channelName" type="text" placeholder="ex: projetos ou #projetos" required />
+          </label>
+
+          <button type="submit" id="submit-button">Adicionar ao canal</button>
+        </form>
+
+        <div id="status" class="status" role="status" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
