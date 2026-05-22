@@ -79,7 +79,10 @@ form.addEventListener("submit", async (event) => {
     const result = await sendInviteWithRetry(payload);
     const count = result.users.length;
     const noun = count === 1 ? "membro foi adicionado" : "membros foram adicionados";
-    showStatus(`${count} ${noun} ao canal #${result.channelName}.`, "success");
+    const warning = result.warning
+      ? " O convite funcionou, mas o bot nao conseguiu sair do canal automaticamente."
+      : "";
+    showStatus(`${count} ${noun} ao canal #${result.channelName}.${warning}`, "success");
     form.reset();
   } catch (error) {
     const message = error.message === "Failed to fetch"

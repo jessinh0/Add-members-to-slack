@@ -42,7 +42,7 @@ http://localhost:3000
 3. Se voce informar o ID do canal, o app pula a busca por nome.
 4. Para canal publico por ID, `conversations.join` entra temporariamente no canal.
 5. `conversations.invite` adiciona os usuarios ao canal.
-6. `conversations.leave` remove o bot do canal publico quando o convite termina.
+6. `conversations.leave` tenta remover o bot do canal publico quando o convite termina. Se essa etapa falhar, o convite ainda e considerado concluido.
 
 Se o Slack responder `ratelimited`, a tela aguarda o tempo indicado pela API e tenta novamente automaticamente algumas vezes.
 

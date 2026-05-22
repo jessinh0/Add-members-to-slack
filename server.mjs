@@ -217,10 +217,13 @@ async function leaveChannel(channelId) {
     await slackApi("conversations.leave", {
       body: { channel: channelId }
     });
+    return null;
   } catch (error) {
-    if (error.code !== "not_in_channel" && error.code !== "cant_leave_general") {
-      throw error;
-    }
+    return {
+      code: error.code || "leave_failed",
+      message: error.message,
+      method: error.method || "conversations.leave"
+    };
   }
 }
 
@@ -276,6 +279,7 @@ async function inviteMember({ email, emails, channelName }) {
 
   const shouldAutoJoinAndLeave = looksLikePublicChannelId(cleanChannelInput);
   let joinedForInvite = false;
+  let leaveWarning = null;
 
   try {
     if (shouldAutoJoinAndLeave) {
@@ -291,14 +295,15 @@ async function inviteMember({ email, emails, channelName }) {
     });
   } finally {
     if (joinedForInvite) {
-      await leaveChannel(channel.id);
+      leaveWarning = await leaveChannel(channel.id);
     }
   }
 
   return {
     users,
     channelId: channel.id,
-    channelName: channel.name
+    channelName: channel.name,
+    warning: leaveWarning
   };
 }
 
