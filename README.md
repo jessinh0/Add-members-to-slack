@@ -14,10 +14,12 @@ Adicione estes escopos em **OAuth & Permissions** no app do Slack e reinstale o 
 - `users:read.email` para localizar o usuario pelo e-mail
 - `channels:read` para encontrar canais publicos pelo nome
 - `groups:read` para encontrar canais privados pelo nome
+- `channels:join` para o bot entrar temporariamente em canais publicos pelo ID
 - `channels:write.invites` para convidar em canais publicos
 - `groups:write.invites` para convidar em canais privados
+- `channels:write` para o bot sair do canal publico depois do convite
 
-O app tambem precisa estar no canal quando o Slack exigir isso, especialmente em canais privados.
+Ao informar o ID de um canal publico (`C...`), o app tenta entrar no canal, convidar os usuarios e sair em seguida. Para canais privados (`G...`), o bot ainda precisa ser adicionado ao canal por um membro.
 
 ## Como rodar
 
@@ -38,7 +40,9 @@ http://localhost:3000
 1. `users.lookupByEmail` encontra cada usuario pelo e-mail.
 2. Se voce informar o nome do canal, `conversations.list` encontra o canal pelo nome.
 3. Se voce informar o ID do canal, o app pula a busca por nome.
-4. `conversations.invite` adiciona os usuarios ao canal.
+4. Para canal publico por ID, `conversations.join` entra temporariamente no canal.
+5. `conversations.invite` adiciona os usuarios ao canal.
+6. `conversations.leave` remove o bot do canal publico quando o convite termina.
 
 Se o Slack responder `ratelimited`, a tela aguarda o tempo indicado pela API e tenta novamente automaticamente algumas vezes.
 

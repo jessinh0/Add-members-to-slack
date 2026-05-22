@@ -44,6 +44,7 @@ const slackErrorMessages = {
   already_in_channel: "Um ou mais usuarios ja estao no canal.",
   channel_not_found: "Canal nao encontrado ou o token nao tem acesso a esse canal.",
   invalid_auth: "Token invalido. Gere um novo token no Slack e atualize o arquivo .env.",
+  method_not_supported_for_channel_type: "Este metodo nao funciona para esse tipo de canal.",
   missing_scope: "O token nao tem todos os escopos necessarios no Slack.",
   not_authed: "Nenhum token foi enviado ao Slack.",
   not_in_channel: "O usuario/app do token precisa estar no canal antes de convidar membros.",
@@ -80,6 +81,10 @@ function normalizeChannelInput(channelName) {
 
 function looksLikeChannelId(channelName) {
   return /^[CG][A-Z0-9]{8,}$/.test(normalizeChannelInput(channelName));
+}
+
+function looksLikePublicChannelId(channelName) {
+  return /^C[A-Z0-9]{8,}$/.test(normalizeChannelInput(channelName));
 }
 
 async function slackApi(method, { httpMethod = "POST", params = {}, body = null } = {}) {
@@ -201,6 +206,24 @@ async function findChannelByName(channelName) {
   return null;
 }
 
+async function joinChannel(channelId) {
+  await slackApi("conversations.join", {
+    body: { channel: channelId }
+  });
+}
+
+async function leaveChannel(channelId) {
+  try {
+    await slackApi("conversations.leave", {
+      body: { channel: channelId }
+    });
+  } catch (error) {
+    if (error.code !== "not_in_channel" && error.code !== "cant_leave_general") {
+      throw error;
+    }
+  }
+}
+
 function parseEmails(value) {
   return String(value || "")
     .split(/[\s,;]+/)
@@ -251,12 +274,26 @@ async function inviteMember({ email, emails, channelName }) {
     });
   }
 
-  await slackApi("conversations.invite", {
-    body: {
-      channel: channel.id,
-      users: users.map((user) => user.id).join(",")
+  const shouldAutoJoinAndLeave = looksLikePublicChannelId(cleanChannelInput);
+  let joinedForInvite = false;
+
+  try {
+    if (shouldAutoJoinAndLeave) {
+      await joinChannel(channel.id);
+      joinedForInvite = true;
     }
-  });
+
+    await slackApi("conversations.invite", {
+      body: {
+        channel: channel.id,
+        users: users.map((user) => user.id).join(",")
+      }
+    });
+  } finally {
+    if (joinedForInvite) {
+      await leaveChannel(channel.id);
+    }
+  }
 
   return {
     users,
