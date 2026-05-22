@@ -31,6 +31,7 @@ const SLACK_TOKEN = process.env.SLACK_TOKEN || process.env.SLACK_BOT_TOKEN;
 const PUBLIC_DIR = join(process.cwd(), "public");
 const userCache = new Map();
 const channelCache = new Map();
+const slackCooldowns = new Map();
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -80,6 +81,16 @@ async function slackApi(method, { httpMethod = "POST", params = {}, body = null 
     throw error;
   }
 
+  const cooldownUntil = slackCooldowns.get(method) || 0;
+  if (Date.now() < cooldownUntil) {
+    const retryAfter = Math.ceil((cooldownUntil - Date.now()) / 1000);
+    const error = new Error(`Slack pediu para aguardar antes de chamar ${method}.`);
+    error.code = "ratelimited";
+    error.method = method;
+    error.retryAfter = retryAfter;
+    throw error;
+  }
+
   const url = new URL(`https://slack.com/api/${method}`);
   const headers = {
     authorization: `Bearer ${SLACK_TOKEN}`,
@@ -123,8 +134,12 @@ async function slackApi(method, { httpMethod = "POST", params = {}, body = null 
     const friendlyMessage = slackErrorMessages[errorCode] || `Slack respondeu com erro: ${errorCode}`;
     const error = new Error(friendlyMessage);
     error.code = errorCode;
+    error.method = method;
     error.details = data;
     error.retryAfter = Number(response.headers.get("retry-after") || 0);
+    if (error.code === "ratelimited" && error.retryAfter > 0) {
+      slackCooldowns.set(method, Date.now() + error.retryAfter * 1000);
+    }
     throw error;
   }
 
@@ -279,6 +294,7 @@ const server = http.createServer(async (req, res) => {
           at: new Date().toISOString(),
           error: error.message,
           code: error.code || "unknown_error",
+          method: error.method,
           retryAfter: error.retryAfter,
           details: error.details
         },
@@ -291,6 +307,7 @@ const server = http.createServer(async (req, res) => {
       ok: false,
       error: error.message,
       code: error.code || "unknown_error",
+      method: error.method || undefined,
       retryAfter: error.retryAfter || undefined,
       details: error.details
     });

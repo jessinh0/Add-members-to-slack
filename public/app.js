@@ -32,10 +32,11 @@ async function sendInvite(payload) {
 
   if (!response.ok || !data.ok) {
     const suffix = data.code ? ` (${data.code})` : "";
+    const method = data.method ? ` Metodo: ${data.method}.` : "";
     const message = data.code === "not_json_response"
       ? "A API /api/invite nao foi encontrada. Confirme que o app foi hospedado como Web Service Node, nao como site estatico."
       : data.error || "Nao foi possivel adicionar o membro.";
-    const error = new Error(`${message}${suffix}`);
+    const error = new Error(`${message}${method}${suffix}`);
     error.code = data.code;
     error.retryAfter = Number(data.retryAfter || 0);
     throw error;
@@ -45,7 +46,7 @@ async function sendInvite(payload) {
 }
 
 async function sendInviteWithRetry(payload) {
-  const maxAttempts = 4;
+  const maxAttempts = 2;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
