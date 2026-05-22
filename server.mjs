@@ -29,6 +29,8 @@ await loadLocalEnv();
 const PORT = Number(process.env.PORT || 3000);
 const SLACK_TOKEN = process.env.SLACK_TOKEN || process.env.SLACK_BOT_TOKEN;
 const PUBLIC_DIR = join(process.cwd(), "public");
+const userCache = new Map();
+const channelCache = new Map();
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -44,6 +46,7 @@ const slackErrorMessages = {
   missing_scope: "O token nao tem todos os escopos necessarios no Slack.",
   not_authed: "Nenhum token foi enviado ao Slack.",
   not_in_channel: "O usuario/app do token precisa estar no canal antes de convidar membros.",
+  slack_timeout: "A chamada ao Slack demorou demais para responder. Tente novamente em alguns segundos.",
   user_not_found: "Usuario nao encontrado pelo e-mail informado."
 };
 
@@ -95,7 +98,24 @@ async function slackApi(method, { httpMethod = "POST", params = {}, body = null 
     request.body = JSON.stringify(body ?? params);
   }
 
-  const response = await fetch(url, request);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  request.signal = controller.signal;
+
+  let response;
+  try {
+    response = await fetch(url, request);
+  } catch (error) {
+    if (error.name === "AbortError") {
+      const timeoutError = new Error(slackErrorMessages.slack_timeout);
+      timeoutError.code = "slack_timeout";
+      throw timeoutError;
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+
   const data = await response.json();
 
   if (!response.ok || !data.ok) {
@@ -112,15 +132,24 @@ async function slackApi(method, { httpMethod = "POST", params = {}, body = null 
 }
 
 async function findUserByEmail(email) {
+  if (userCache.has(email)) {
+    return userCache.get(email);
+  }
+
   const data = await slackApi("users.lookupByEmail", {
     httpMethod: "GET",
     params: { email }
   });
+  userCache.set(email, data.user);
   return data.user;
 }
 
 async function findChannelByName(channelName) {
   const targetName = normalizeChannelName(channelName);
+  if (channelCache.has(targetName)) {
+    return channelCache.get(targetName);
+  }
+
   let cursor = "";
 
   do {
@@ -139,6 +168,7 @@ async function findChannelByName(channelName) {
     });
 
     if (channel) {
+      channelCache.set(targetName, channel);
       return channel;
     }
 
@@ -216,7 +246,10 @@ async function serveStatic(req, res) {
 
   try {
     const content = await readFile(filePath);
-    res.writeHead(200, { "content-type": mimeTypes[extname(filePath)] || "application/octet-stream" });
+    res.writeHead(200, {
+      "content-type": mimeTypes[extname(filePath)] || "application/octet-stream",
+      "cache-control": "no-store"
+    });
     res.end(content);
   } catch {
     res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });

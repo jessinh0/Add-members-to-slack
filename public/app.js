@@ -6,6 +6,13 @@ function wait(seconds) {
   return new Promise((resolve) => window.setTimeout(resolve, seconds * 1000));
 }
 
+async function waitWithCountdown(seconds) {
+  for (let remaining = seconds; remaining > 0; remaining -= 1) {
+    showStatus(`Limite do Slack atingido. Nova tentativa em ${remaining} segundos...`);
+    await wait(1);
+  }
+}
+
 function showStatus(message, type = "") {
   statusBox.textContent = message;
   statusBox.className = `status ${type}`.trim();
@@ -18,10 +25,17 @@ async function sendInvite(payload) {
     body: JSON.stringify(payload)
   });
 
-  const data = await response.json();
+  const contentType = response.headers.get("content-type") || "";
+  const data = contentType.includes("application/json")
+    ? await response.json()
+    : { error: await response.text(), code: "not_json_response" };
+
   if (!response.ok || !data.ok) {
     const suffix = data.code ? ` (${data.code})` : "";
-    const error = new Error(`${data.error || "Nao foi possivel adicionar o membro."}${suffix}`);
+    const message = data.code === "not_json_response"
+      ? "A API /api/invite nao foi encontrada. Confirme que o app foi hospedado como Web Service Node, nao como site estatico."
+      : data.error || "Nao foi possivel adicionar o membro.";
+    const error = new Error(`${message}${suffix}`);
     error.code = data.code;
     error.retryAfter = Number(data.retryAfter || 0);
     throw error;
@@ -31,18 +45,20 @@ async function sendInvite(payload) {
 }
 
 async function sendInviteWithRetry(payload) {
-  try {
-    return await sendInvite(payload);
-  } catch (error) {
-    if (error.code !== "ratelimited") {
-      throw error;
-    }
+  const maxAttempts = 4;
 
-    const retryAfter = Math.max(error.retryAfter || 60, 5);
-    showStatus(`Limite do Slack atingido. Vou tentar novamente em ${retryAfter} segundos...`);
-    await wait(retryAfter);
-    showStatus("Tentando novamente...");
-    return sendInvite(payload);
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await sendInvite(payload);
+    } catch (error) {
+      if (error.code !== "ratelimited" || attempt === maxAttempts) {
+        throw error;
+      }
+
+      const retryAfter = Math.max(error.retryAfter || 60, 10);
+      await waitWithCountdown(retryAfter);
+      showStatus(`Tentando novamente (${attempt + 1}/${maxAttempts})...`);
+    }
   }
 }
 

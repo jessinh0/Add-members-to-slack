@@ -39,6 +39,6 @@ http://localhost:3000
 2. `conversations.list` encontra o canal pelo nome.
 3. `conversations.invite` adiciona os usuarios ao canal.
 
-Se o Slack responder `ratelimited`, a tela aguarda o tempo indicado pela API e tenta novamente uma vez.
+Se o Slack responder `ratelimited`, a tela aguarda o tempo indicado pela API e tenta novamente automaticamente algumas vezes.
 
 Observacao: isso adiciona usuarios que ja existem no workspace. Para convidar pessoas externas que ainda nao estao no workspace, o fluxo e outro e normalmente exige APIs administrativas do Slack.
