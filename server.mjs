@@ -74,6 +74,14 @@ function normalizeChannelName(channelName) {
     .toLowerCase();
 }
 
+function normalizeChannelInput(channelName) {
+  return String(channelName || "").trim().replace(/^#/, "");
+}
+
+function looksLikeChannelId(channelName) {
+  return /^[CG][A-Z0-9]{8,}$/.test(normalizeChannelInput(channelName));
+}
+
 async function slackApi(method, { httpMethod = "POST", params = {}, body = null } = {}) {
   if (!SLACK_TOKEN) {
     const error = new Error("Configure a variavel SLACK_TOKEN antes de usar o app.");
@@ -202,6 +210,7 @@ function parseEmails(value) {
 
 async function inviteMember({ email, emails, channelName }) {
   const cleanEmails = parseEmails(emails || email);
+  const cleanChannelInput = normalizeChannelInput(channelName);
   const cleanChannelName = normalizeChannelName(channelName);
 
   if (!cleanEmails.length || cleanEmails.some((item) => !item.includes("@"))) {
@@ -216,13 +225,15 @@ async function inviteMember({ email, emails, channelName }) {
     throw error;
   }
 
-  if (!cleanChannelName) {
-    const error = new Error("Informe o nome do canal.");
+  if (!cleanChannelInput) {
+    const error = new Error("Informe o nome ou ID do canal.");
     error.code = "invalid_channel";
     throw error;
   }
 
-  const channel = await findChannelByName(cleanChannelName);
+  const channel = looksLikeChannelId(cleanChannelInput)
+    ? { id: cleanChannelInput, name: cleanChannelInput }
+    : await findChannelByName(cleanChannelName);
 
   if (!channel) {
     const error = new Error(`Canal #${cleanChannelName} nao encontrado ou sem acesso pelo token.`);

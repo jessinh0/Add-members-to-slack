@@ -1,6 +1,6 @@
 # Slack Channel Inviter
 
-Aplicacao simples para adicionar membros existentes do workspace a um canal do Slack usando e-mails e nome do canal.
+Aplicacao simples para adicionar membros existentes do workspace a um canal do Slack usando e-mails e nome ou ID do canal.
 
 ## Requisitos
 
@@ -36,8 +36,9 @@ http://localhost:3000
 ## Como funciona
 
 1. `users.lookupByEmail` encontra cada usuario pelo e-mail.
-2. `conversations.list` encontra o canal pelo nome.
-3. `conversations.invite` adiciona os usuarios ao canal.
+2. Se voce informar o nome do canal, `conversations.list` encontra o canal pelo nome.
+3. Se voce informar o ID do canal, o app pula a busca por nome.
+4. `conversations.invite` adiciona os usuarios ao canal.
 
 Se o Slack responder `ratelimited`, a tela aguarda o tempo indicado pela API e tenta novamente automaticamente algumas vezes.
 
