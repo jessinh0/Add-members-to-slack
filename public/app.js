@@ -127,3 +127,35 @@ form.addEventListener("submit", async (event) => {
       if (error.message === "Failed to fetch") {
         failed.push(`${channelId}: could not reach the server.`);
       } else {
+        failed.push(`${channelId}: ${error.message}`);
+      }
+
+      if (FATAL_CODES.has(error.code)) {
+        stoppedEarly = error.message;
+        break;
+      }
+    }
+  }
+
+  const processed = added.length + alreadyMember.length + failed.length;
+  const summary = [
+    `Done: ${added.length} channel(s) added`,
+    alreadyMember.length ? `${alreadyMember.length} already had the member(s)` : null,
+    failed.length ? `${failed.length} failed` : null
+  ].filter(Boolean).join(", ") + ".";
+
+  if (stoppedEarly) {
+    showStatus(
+      `Stopped after ${processed} of ${channelIds.length} channels because of an error that would repeat on every channel. ${summary}`,
+      "error",
+      failed
+    );
+  } else if (failed.length) {
+    showStatus(`${summary} Channels that failed:`, "error", failed);
+  } else {
+    showStatus(summary, "success");
+    form.reset();
+  }
+
+  submitButton.disabled = false;
+});
