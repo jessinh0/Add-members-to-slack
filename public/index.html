@@ -11,7 +11,7 @@
       <section class="panel" aria-labelledby="title">
         <div class="heading">
           <p class="eyebrow">Slack</p>
-          <h1 id="title">Add members to a Slack channel</h1>
+          <h1 id="title">Add members to Slack channels</h1>
         </div>
 
         <form id="invite-form" class="form">
@@ -21,17 +21,17 @@
           </label>
 
           <label>
-            Channel ID
-            <input id="channelName" name="channelName" type="text" placeholder="Example: C012ABCDEF3" required />
+            Channel IDs (one per line, or separated by commas)
+            <textarea id="channelIds" name="channelIds" rows="8" placeholder="C012ABCDEF3&#10;C045GHIJKL6&#10;G078MNOPQR9" required></textarea>
           </label>
 
-          <button type="submit" id="submit-button">Add to channel</button>
+          <button type="submit" id="submit-button">Add to channels</button>
         </form>
 
         <div id="status" class="status" role="status" aria-live="polite"></div>
       </section>
     </main>
 
-    <script src="/app.js?v=2"></script>
+    <script src="/app.js?v=3"></script>
   </body>
 </html>
