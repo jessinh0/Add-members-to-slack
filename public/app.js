@@ -2,20 +2,50 @@ const form = document.querySelector("#invite-form");
 const statusBox = document.querySelector("#status");
 const submitButton = document.querySelector("#submit-button");
 
+// Erros que vao se repetir em todos os canais: melhor parar logo
+const FATAL_CODES = new Set([
+  "invalid_auth",
+  "not_authed",
+  "missing_token",
+  "missing_scope",
+  "user_not_found",
+  "invalid_email",
+  "too_many_users",
+  "not_json_response"
+]);
+
 function wait(seconds) {
   return new Promise((resolve) => window.setTimeout(resolve, seconds * 1000));
 }
 
-async function waitWithCountdown(seconds) {
+function showStatus(message, type = "", details = []) {
+  statusBox.textContent = message;
+  statusBox.className = `status ${type}`.trim();
+
+  if (details.length) {
+    const list = document.createElement("ul");
+    for (const line of details) {
+      const item = document.createElement("li");
+      item.textContent = line;
+      list.appendChild(item);
+    }
+    statusBox.appendChild(list);
+  }
+}
+
+async function waitWithCountdown(seconds, progressLabel) {
   for (let remaining = seconds; remaining > 0; remaining -= 1) {
-    showStatus(`Slack rate limit reached. Retrying in ${remaining} seconds...`);
+    showStatus(`${progressLabel} Slack rate limit reached. Retrying in ${remaining} seconds...`);
     await wait(1);
   }
 }
 
-function showStatus(message, type = "") {
-  statusBox.textContent = message;
-  statusBox.className = `status ${type}`.trim();
+function parseChannelIds(value) {
+  const ids = String(value || "")
+    .split(/[\s,;]+/)
+    .map((id) => id.trim().replace(/^#/, ""))
+    .filter(Boolean);
+  return [...new Set(ids)];
 }
 
 async function sendInvite(payload) {
@@ -32,11 +62,10 @@ async function sendInvite(payload) {
 
   if (!response.ok || !data.ok) {
     const suffix = data.code ? ` (${data.code})` : "";
-    const method = data.method ? ` Metodo: ${data.method}.` : "";
     const message = data.code === "not_json_response"
       ? "The /api/invite API was not found. Confirm the app is deployed as a Node Web Service, not a static site."
       : data.error || "Could not add the member.";
-    const error = new Error(`${message}${method}${suffix}`);
+    const error = new Error(`${message}${suffix}`);
     error.code = data.code;
     error.retryAfter = Number(data.retryAfter || 0);
     throw error;
@@ -45,20 +74,20 @@ async function sendInvite(payload) {
   return data.result;
 }
 
-async function sendInviteWithRetry(payload) {
-  const maxAttempts = 2;
+async function sendInviteWithRetry(payload, progressLabel) {
+  const maxAttempts = 6;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
       return await sendInvite(payload);
     } catch (error) {
-      if (error.code !== "ratelimited" || attempt === maxAttempts) {
+      const retryable = error.code === "ratelimited" || error.code === "slack_timeout";
+      if (!retryable || attempt === maxAttempts) {
         throw error;
       }
 
-      const retryAfter = Math.max(error.retryAfter || 60, 10);
-      await waitWithCountdown(retryAfter);
-      showStatus(`Retrying (${attempt + 1}/${maxAttempts})...`);
+      const retryAfter = Math.max(error.retryAfter || 30, 5);
+      await waitWithCountdown(retryAfter, progressLabel);
     }
   }
 }
@@ -67,29 +96,34 @@ form.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const formData = new FormData(form);
-  const payload = {
-    emails: formData.get("emails"),
-    channelName: formData.get("channelName")
-  };
+  const emails = formData.get("emails");
+  const channelIds = parseChannelIds(formData.get("channelIds"));
+
+  if (!channelIds.length) {
+    showStatus("Enter at least one channel ID.", "error");
+    return;
+  }
 
   submitButton.disabled = true;
-  showStatus("Sending invite...");
 
-  try {
-    const result = await sendInviteWithRetry(payload);
-    const count = result.users.length;
-    const noun = count === 1 ? "member was added" : "members were added";
-    const warning = result.warning
-      ? " The invite worked, but the bot could not leave the channel automatically."
-      : "";
-    showStatus(`${count} ${noun} to channel ${result.channelName}.${warning}`, "success");
-    form.reset();
-  } catch (error) {
-    const message = error.message === "Failed to fetch"
-      ? "Could not connect to the local server. Reload the page or restart the app with .\\run-server.ps1."
-      : error.message;
-    showStatus(message, "error");
-  } finally {
-    submitButton.disabled = false;
-  }
-});
+  const added = [];
+  const alreadyMember = [];
+  const failed = [];
+  let stoppedEarly = null;
+
+  for (let index = 0; index < channelIds.length; index += 1) {
+    const channelId = channelIds[index];
+    const progressLabel = `Channel ${index + 1} of ${channelIds.length} (${channelId}).`;
+    showStatus(`${progressLabel} Adding...`);
+
+    try {
+      const result = await sendInviteWithRetry({ emails, channelName: channelId }, progressLabel);
+      if (result.alreadyInChannel) {
+        alreadyMember.push(channelId);
+      } else {
+        added.push(channelId);
+      }
+    } catch (error) {
+      if (error.message === "Failed to fetch") {
+        failed.push(`${channelId}: could not reach the server.`);
+      } else {
