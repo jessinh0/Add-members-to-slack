@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Add Slack member</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="panel" aria-labelledby="title">
+        <div class="heading">
+          <p class="eyebrow">Slack</p>
+          <h1 id="title">Add members to Slack channels</h1>
+        </div>
+
+        <form id="invite-form" class="form">
+          <label>
+            Member emails
+            <textarea id="emails" name="emails" rows="5" placeholder="pessoa@empresa.com&#10;outra@empresa.com" required></textarea>
+          </label>
+
+          <label>
+            Channel IDs (one per line, or separated by commas)
+            <textarea id="channelIds" name="channelIds" rows="8" placeholder="C012ABCDEF3&#10;C045GHIJKL6&#10;G078MNOPQR9" required></textarea>
+          </label>
+
+          <button type="submit" id="submit-button">Add to channels</button>
+        </form>
+
+        <div id="status" class="status" role="status" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <script src="/app.js?v=3"></script>
+  </body>
+</html>
