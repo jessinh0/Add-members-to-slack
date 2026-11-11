@@ -277,6 +277,7 @@ async function inviteMember({ email, emails, channelName }) {
   const shouldAutoJoinAndLeave = looksLikePublicChannelId(cleanChannelInput);
   let joinedForInvite = false;
   let leaveWarning = null;
+  let alreadyInChannel = false;
 
   try {
     if (shouldAutoJoinAndLeave) {
@@ -284,12 +285,21 @@ async function inviteMember({ email, emails, channelName }) {
       joinedForInvite = true;
     }
 
-    await slackApi("conversations.invite", {
-      body: {
-        channel: channel.id,
-        users: users.map((user) => user.id).join(",")
+    try {
+      await slackApi("conversations.invite", {
+        body: {
+          channel: channel.id,
+          users: users.map((user) => user.id).join(","),
+          force: true
+        }
+      });
+    } catch (error) {
+      // Se as pessoas ja estao no canal, consideramos sucesso
+      if (error.code !== "already_in_channel") {
+        throw error;
       }
-    });
+      alreadyInChannel = true;
+    }
   } finally {
     if (joinedForInvite) {
       leaveWarning = await leaveChannel(channel.id);
@@ -300,6 +310,7 @@ async function inviteMember({ email, emails, channelName }) {
     users,
     channelId: channel.id,
     channelName: channel.name,
+    alreadyInChannel,
     warning: leaveWarning
   };
 }
